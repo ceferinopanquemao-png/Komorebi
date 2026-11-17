@@ -1,0 +1,4 @@
+let dbPromise;
+function db(){return dbPromise ||= new Promise((resolve,reject)=>{const r=indexedDB.open('komorebi-encrypted',1);r.onupgradeneeded=()=>r.result.createObjectStore('vault');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
+export async function getDocument(){const d=await db();return new Promise((resolve,reject)=>{const tx=d.transaction('vault','readonly'),r=tx.objectStore('vault').get('current');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
+export async function putDocument(value){const d=await db();return new Promise((resolve,reject)=>{const tx=d.transaction('vault','readwrite');tx.objectStore('vault').put(value,'current');tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||Error('Journal save was interrupted.'));});}

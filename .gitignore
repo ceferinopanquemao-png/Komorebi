@@ -1,0 +1,15 @@
+**/node_modules/
+**/dist/
+**/packages/
+**/web-ext-artifacts/
+*.vault
+*.vault.*
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.xpi
+*.exe
+*.AppImage
+.DS_Store

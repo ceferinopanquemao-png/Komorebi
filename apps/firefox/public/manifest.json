@@ -1,0 +1,48 @@
+{
+  "manifest_version": 3,
+  "name": "Komorebi \u2014 Encrypted Daily Journal",
+  "version": "1.0.0",
+  "description": "A quiet Hobonichi-inspired Markdown journal. Encrypted local storage, backups, and optional WebDAV sync.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "komorebi@journal.local",
+      "strict_min_version": "142.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ],
+        "optional": [
+          "authenticationInfo",
+          "personalCommunications"
+        ]
+      }
+    }
+  },
+  "permissions": [
+    "storage",
+    "unlimitedStorage"
+  ],
+  "optional_host_permissions": [
+    "https://*/*"
+  ],
+  "background": {
+    "scripts": [
+      "background.js"
+    ]
+  },
+  "action": {
+    "default_title": "Open Komorebi",
+    "default_icon": "icon.svg"
+  },
+  "icons": {
+    "48": "icon.svg",
+    "96": "icon.svg"
+  },
+  "options_ui": {
+    "page": "index.html",
+    "open_in_tab": true
+  },
+  "content_security_policy": {
+    "extension_pages": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src https:; object-src 'none'; base-uri 'none'; form-action 'none'"
+  }
+}

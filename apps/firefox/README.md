@@ -8,7 +8,7 @@ Requires desktop Firefox 142 or newer on Windows, Linux, or macOS.
 
 1. Open `about:debugging#/runtime/this-firefox` in Firefox.
 2. Select **Load Temporary Add-on…**.
-3. Select the supplied `komorebi-firefox-1.0.0-unsigned.xpi`, or select `manifest.json` in the unpacked extension folder.
+3. Select the supplied `komorebi-firefox-1.1.0-unsigned.xpi`, or select `manifest.json` in the unpacked extension folder.
 4. The journal opens in its own tab. Use the toolbar button to reopen it.
 5. Create a password of at least 10 characters. Keep it safe: there is no password recovery.
 
@@ -22,7 +22,13 @@ Entries save locally after a short 100 ms debounce. Wait for **Saved locally**, 
 
 The download button exports an encrypted `.vault` backup. To import a backup or original Electron `.vault`, lock the journal and select **Import encrypted backup or desktop vault**. Enter that file’s password. Existing local data is replaced only after successful decryption and validation; the UI requires explicit replacement confirmation. Download the current local backup first. A desktop import retains the desktop vault’s password, converts it to the extension format, and leaves the original file untouched. Desktop import is one-way; the Electron app cannot read the new extension format.
 
-## Optional WebDAV sync
+## Optional remote storage
+
+Version 1.1 adds a provider selector under **Journal settings → Configure remote storage** and **Open an existing remote journal**. Choose WebDAV, AWS S3 / S3-compatible storage, or Azure Blob Storage. Existing 1.0 WebDAV settings and encrypted journals continue to work without a format change.
+
+See [Remote storage setup](REMOTE-STORAGE.md) for cloud credentials, endpoints, permissions, and browser CORS examples. Buckets/containers must already exist; Komorebi does not create cloud resources. Keep them private. AWS root/account-wide keys are unnecessary; use restricted credentials.
+
+### WebDAV
 
 Use an HTTPS WebDAV server, such as Nextcloud. You provide and operate the server or use an existing account. This extension does not create cloud resources or a hosted account.
 
@@ -47,12 +53,12 @@ The server must return a **strong ETag** on GET and correctly enforce **If-Match
 - AES-256-GCM with a fresh 96-bit nonce for every encryption. Record identity is authenticated as additional data.
 - PBKDF2-SHA256 with 600,000 iterations and a random 128-bit salt derives separate encryption and HMAC keys; CryptoKeys are not extractable.
 - HMAC-derived opaque record IDs conceal dates; an authenticated encrypted manifest detects missing/extra records.
-- WebDAV URL, credentials, sync baseline, and last-sync state are encrypted separately in the local vault. They are excluded from exported/remote journal snapshots.
-- Each entry is individually encrypted, but this first version transfers one complete encrypted WebDAV snapshot per sync, up to 50 MB. It is not incremental per-object network sync.
+- Remote provider, endpoint, credentials, sync baseline, and last-sync state are encrypted separately in the local vault. They are excluded from exported/remote journal snapshots.
+- Each entry is individually encrypted, but this version transfers one complete encrypted object snapshot per sync, up to 50 MB. It is not incremental per-object network sync.
 - Local paper/idle settings use Firefox extension preferences, without journal content. No Firefox Sync storage is used.
 - No telemetry, remote executable code, remote fonts, content scripts, or access to unrelated browsing history. Network access is optional, HTTPS-only, requested for the configured server origin, and checked again before requests.
 - Locking drops key references, clears the editor and dialogs, and removes plaintext journal state. JavaScript cannot guarantee immediate erasure of all copies from memory. Unlocked browser access or malicious software is outside the encryption boundary.
-- The WebDAV provider can see your IP, account, object size/count within the encrypted snapshot, file timestamps, and connection timing. TLS protects credentials in transit; the chosen server receives them. Use a trusted endpoint.
+- The storage provider can see your IP, account, object size/count within the encrypted snapshot, file timestamps, and connection timing. TLS protects requests in transit. WebDAV sends its username/password, S3 sends signed requests (not the secret access key), and Azure sends its SAS token to the configured endpoint. Use a trusted endpoint.
 - Losing the password means losing access. No recovery key, password rotation, or password-reset service is implemented. Browser profile loss, extension removal, or cleared storage can delete the local copy; maintain independent encrypted backups.
 
 ## Build from source
@@ -67,15 +73,15 @@ npm run lint:extension
 npm run package
 ```
 
-Load `dist/manifest.json` temporarily, or use the XPI produced under `packages/`. `npm run dev` is an encrypted local browser development harness, not the original unencrypted Electron preview. In the development harness, cross-origin WebDAV requests need server CORS support; installed Firefox extensions use the optional host permission instead.
+Load `dist/manifest.json` temporarily, or use the XPI produced under `packages/`. `npm run dev` is an encrypted local browser development harness, not the original unencrypted Electron preview. In the development harness, cross-origin storage requests need server CORS support; installed Firefox extensions use the optional host permission instead.
 
 All code is bundled locally. The source build is deliberately unminified for auditability. `web-ext lint` reports zero manifest/code errors and three vendor `innerHTML` warnings from DOMPurify’s inert parser, ProseMirror’s detached paste parser, and TipTap’s static style insertion. Application UI templates use DOMPurify fragments and journal Markdown is filtered before editor rendering. These warnings are retained for review, not suppressed; Mozilla approval/signing is not implied.
 
 ## Validation and limits
 
-Nine Node tests cover browser-format encryption, authentication/tampering, manifest integrity, legacy scrypt import, password constraints, three-way merging, explicit conflicts, tombstones, encrypted IndexedDB persistence (fake-indexeddb), revision tracking after UI mutations, conditional WebDAV requests, remote races, and failed restore preservation.
+Eighteen Node tests cover browser-format encryption, authentication/tampering, manifest integrity, legacy scrypt import, password constraints, three-way merging, explicit conflicts, tombstones, encrypted IndexedDB persistence (fake-indexeddb), revision tracking after UI mutations, conditional WebDAV requests, remote races, failed restore preservation, independently checked SigV4 signatures, Azure SAS requests, cloud credential rotation, provider migration, scoped host permissions, and encrypted cloud merge/reopen flows.
 
-Scripted UI checks passed in Chromium and Firefox for local creation, encrypted IndexedDB, Markdown/rich editing, moods, saves, downloads, backup import, single-tab exclusion, lock/unlock, and reload protection. A two-profile Chromium scenario with a simulated WebDAV endpoint passed remote creation/open, independent bidirectional edits, conflict resolution, and failure/retry. Firefox accepted the build as a temporary add-on using Mozilla web-ext. A real third-party WebDAV deployment and Firefox’s optional-permission prompts still require manual verification in the user’s environment.
+Scripted UI checks passed in Chromium and Firefox for local creation, encrypted IndexedDB, Markdown/rich editing, moods, saves, downloads, backup import, single-tab exclusion, lock/unlock, and reload protection. A two-profile Chromium scenario with a simulated WebDAV endpoint passed remote creation/open, independent bidirectional edits, conflict resolution, and failure/retry. Firefox accepted the build as a temporary add-on using Mozilla web-ext. Version 1.1 provider forms and two-device flows passed in both Chromium and Firefox against simulated WebDAV, S3 and Azure endpoints, including credential refresh, same-day conflicts, and 403 failures. Cloud transport tests use simulated services; no real AWS or Azure account was used. A live third-party storage deployment and Firefox’s optional-permission prompts still require verification with your configured provider.
 
 Tables, math, local images, automatic recovery keys, background sync while closed/locked, Android support, and full Typora compatibility are not implemented.
 
@@ -86,7 +92,10 @@ Tables, math, local images, automatic recovery keys, background sync while close
 - `src/db.js`: atomic IndexedDB document writes.
 - `src/store.js`: journal session, persistence, imports, and sync orchestration.
 - `src/merge.js`: three-way merge and conflict detection.
-- `src/webdav.js`: HTTPS permission checks and conditional requests.
+- `src/remote-config.js`: provider validation, destination identity, and host permissions.
+- `src/remote-storage.js`: shared conditional transport, S3 SigV4, and Azure SAS.
+- `src/remote-form.js`: provider-specific connection fields.
+- `src/webdav.js`: compatibility exports for existing WebDAV callers.
 - `public/manifest.json`, `public/background.js`: Firefox extension shell.
 
 MIT licensed. See `THIRD-PARTY-LICENSES.txt` for bundled library notices.

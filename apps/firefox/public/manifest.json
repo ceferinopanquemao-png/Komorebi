@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Komorebi \u2014 Encrypted Daily Journal",
-  "version": "1.0.0",
-  "description": "A quiet Hobonichi-inspired Markdown journal. Encrypted local storage, backups, and optional WebDAV sync.",
+  "version": "1.1.0",
+  "description": "A Hobonichi-inspired encrypted Markdown journal with local storage, backups, WebDAV, S3 and Azure Blob sync.",
   "browser_specific_settings": {
     "gecko": {
       "id": "komorebi@journal.local",

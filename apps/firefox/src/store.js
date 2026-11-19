@@ -1,7 +1,7 @@
 import {newVault,unlockVault,readRecords,recordId,pack,encrypt,decrypt,importDesktop,FORMAT} from './crypto.js';
 import {getDocument,putDocument} from './db.js';
 import {mergeRecords,revisions} from './merge.js';
-import {WebDAV} from './webdav.js';
+import {createRemoteStorage, validateRemote, remoteIdentity} from './remote-storage.js';
 let session,queue=Promise.resolve(),lockListeners=[];
 export function exclusive(fn){const job=queue.catch(()=>{}).then(fn);queue=job;return job;}
 const emptyControl=()=>({base:{},remote:null,lastSync:null});
@@ -19,8 +19,8 @@ export const store={
  lock(){return exclusive(async()=>{session=undefined;lockListeners.forEach(fn=>fn());});},onLock(fn){lockListeners.push(fn);},
  async backup(){await queue;return JSON.stringify(active().vault);},
  control(){return structuredClone(active().control);},
- configure(remote){return exclusive(async()=>{const s=active();if(s.control.remote?.url!==remote?.url)s.control.base={};s.control.remote=remote;await commit(s);});},
- sync(choices={}){return exclusive(async()=>{const s=active();if(!s.control.remote)throw Error('Connect a WebDAV server first.');const dav=new WebDAV(s.control.remote),{vault:remote,etag}=await dav.read();let records=s.records;if(remote){if(remote.id!==s.vault.id||remote.salt!==s.vault.salt)throw Error('The remote file belongs to a different journal. Lock this journal and open the remote journal, or choose another filename.');const other=await readRecords(remote,s.keys);records=mergeRecords(s.records,other,s.control.base,choices);}
+ configure(remote){return exclusive(async()=>{const s=active();const normalized=remote?validateRemote(remote):null;if(remoteIdentity(s.control.remote)!==remoteIdentity(normalized))s.control.base={};s.control.remote=normalized;await commit(s);});},
+ sync(choices={}){return exclusive(async()=>{const s=active();if(!s.control.remote)throw Error('Connect remote storage first.');const dav=createRemoteStorage(s.control.remote),{vault:remote,etag}=await dav.read();let records=s.records;if(remote){if(remote.id!==s.vault.id||remote.salt!==s.vault.salt)throw Error('The remote file belongs to a different journal. Lock this journal and open the remote journal, or choose another filename.');const other=await readRecords(remote,s.keys);records=mergeRecords(s.records,other,s.control.base,choices);}
   else if(Object.keys(s.control.base).length)throw Error('The previously synced remote file is missing. Check the server before creating a new remote copy.');
   const candidate=await pack(s.vault,records,s.keys);await dav.write(candidate,etag);
   s.records=records;s.vault=candidate;s.control.base=revisions(records);s.control.lastSync=new Date().toISOString();await commit(s);return journal(records);
@@ -30,5 +30,5 @@ export const store={
   else {const data=await importDesktop(raw,password),{vault,keys}=await newVault(password);s={vault,keys,records:{},control:emptyControl()};for(const [date,entry] of Object.entries(data.entries)){const id=await recordId(date,keys);s.records[id]={date,entry:structuredClone(entry),deleted:false,rev:crypto.randomUUID()};}}
   await commit(s);session=s;return journal(s.records);
  });},
- openRemote(config,password){return exclusive(async()=>{if(session)throw Error('Lock the journal before opening a remote journal.');const {vault}=await new WebDAV(config).read();if(!vault)throw Error('No journal found at this remote URL.');const keys=await unlockVault(vault,password),records=await readRecords(vault,keys);const s={vault,keys,records,control:{...emptyControl(),remote:config,base:revisions(records),lastSync:new Date().toISOString()}};await commit(s);session=s;return journal(records);});}
+ openRemote(config,password){return exclusive(async()=>{if(session)throw Error('Lock the journal before opening a remote journal.');config=validateRemote(config);const {vault}=await createRemoteStorage(config).read();if(!vault)throw Error('No journal found at this remote URL.');const keys=await unlockVault(vault,password),records=await readRecords(vault,keys);const s={vault,keys,records,control:{...emptyControl(),remote:config,base:revisions(records),lastSync:new Date().toISOString()}};await commit(s);session=s;return journal(records);});}
 };

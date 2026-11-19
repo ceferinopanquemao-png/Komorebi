@@ -7,7 +7,7 @@ This repository contains the two applications built so far:
 | Application | Source | Run / build |
 | --- | --- | --- |
 | Electron desktop app for Windows and Linux | [`apps/desktop`](apps/desktop) | `npm ci`, then `npm run desktop` |
-| Standalone Firefox extension with encrypted local storage and optional WebDAV sync | [`apps/firefox`](apps/firefox) | `npm ci`, then `npm run package` |
+| Standalone Firefox extension with encrypted local storage and optional WebDAV, S3-compatible, and Azure Blob sync | [`apps/firefox`](apps/firefox) | `npm ci`, then `npm run package` |
 
 Each application has its own package.json, dependency lockfile, README, tests, and build configuration. Run commands inside the corresponding application directory. Use Node.js 22 or newer.
 
@@ -31,7 +31,7 @@ npm test
 npm run package
 ```
 
-The generated unsigned XPI is in `apps/firefox/packages/`. Load it temporarily in Firefox 142+ at `about:debugging#/runtime/this-firefox`. Permanent distribution requires Mozilla signing. Local journals are encrypted in IndexedDB; remote synchronisation is optional and uses a user-supplied HTTPS WebDAV endpoint. See [the extension guide](apps/firefox/README.md) and [privacy documentation](apps/firefox/PRIVACY.md).
+The generated unsigned XPI is in `apps/firefox/packages/`. Load it temporarily in Firefox 142+ at `about:debugging#/runtime/this-firefox`. Permanent distribution requires Mozilla signing. Local journals are encrypted in IndexedDB; remote synchronisation is optional and supports user-supplied HTTPS WebDAV, S3-compatible, and Azure Blob storage. See [the extension guide](apps/firefox/README.md) and [privacy documentation](apps/firefox/PRIVACY.md).
 
 ## Storage and compatibility
 
